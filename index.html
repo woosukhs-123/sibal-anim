@@ -1,1 +1,47 @@
-<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>움직이는 그림 목록</title><body style="font-family:sans-serif;padding:16px"><h1>움직이는 그림</h1><ul><li><a href="flu.html">flu</a></li></ul></body>
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>움직이는 그림 목록</title>
+<style>
+:root{--bg:#f6f4f7;--card:#fff;--ink:#222;--muted:#6b6670;--line:#e2dde4;--accent:#B4467E;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#17151a;--card:#232027;--ink:#eee;--muted:#a9a3ad;--line:#3a353f;color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:18px 16px 40px}
+h1{font-size:20px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin:0 0 16px}
+h2{font-size:13px;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px}
+.subj{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:8px 0}
+.subj b{font-size:15px}.subj ul{margin:6px 0 0;padding-left:18px}.subj li{margin:4px 0}
+a{color:var(--accent)}.test{opacity:.75}.msg{color:var(--muted);font-size:13px}
+</style></head>
+<body><div class="wrap">
+<h1>움직이는 그림</h1>
+<p class="sub">교재 QR로 여는 페이지 목록. 과목별로 모았어.</p>
+<div id="list"><p class="msg">불러오는 중…</p></div>
+</div>
+<script>
+// 저장소 파일 목록을 직접 읽어서 보여 준다 → 키트가 index.html을 다시 만들 필요 없음.
+const OWNER='woosukhs-123', REPO='sibal-anim';
+const box=document.getElementById('list');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function title(p){try{const t=await (await fetch(p)).text();const m=t.match(/<title>([^<]*)/);return m?m[1].replace(/\s*—\s*움직이는 그림\s*$/,''):p}catch(e){return p}}
+(async()=>{
+  try{
+    const subj=await (await fetch('subjects.json')).json();
+    const tree=await (await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/git/trees/main?recursive=1`)).json();
+    const files=(tree.tree||[]).map(x=>x.path).filter(p=>p.endsWith('.html')&&p.includes('/'));
+    const by={};files.forEach(p=>{const f=p.split('/')[0];(by[f]=by[f]||[]).push(p)});
+    let html='';const sems={};
+    subj['과목'].forEach(s=>{if(by[s['폴더']])(sems[s['학기']]=sems[s['학기']]||[]).push(s)});
+    for(const sem of Object.keys(sems).sort()){
+      html+=`<h2>${esc(sem.replace('-','학년 '))}학기</h2>`;
+      for(const s of sems[sem]){
+        const items=await Promise.all(by[s['폴더']].sort().map(async p=>`<li><a href="${esc(p)}">${esc(await title(p))}</a></li>`));
+        html+=`<div class="subj"><b>${esc(s['이름'])}</b><ul>${items.join('')}</ul></div>`;
+      }
+    }
+    if(by.test)html+=`<h2>테스트용</h2><div class="subj test"><ul>${by.test.map(p=>`<li><a href="${esc(p)}">${esc(p)}</a></li>`).join('')}</ul></div>`;
+    box.innerHTML=html||'<p class="msg">아직 올라온 페이지가 없어.</p>';
+  }catch(e){box.innerHTML='<p class="msg">목록을 불러오지 못했어. 잠시 뒤 새로고침해 줘. (QR 페이지는 정상이야)</p>'}
+})();
+</script>
+</body></html>
